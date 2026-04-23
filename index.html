@@ -1,0 +1,108 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=yes">
+<title>Laporan Validasi POP</title>
+<style>
+  body { font-family: system-ui; background: #f0f2f5; padding: 16px; }
+  .container { max-width: 600px; margin: auto; background: white; padding: 20px; border-radius: 16px; box-shadow: 0 4px 12px rgba(0,0,0,0.08); }
+  h1 { text-align: center; color: #1a73e8; }
+  label { font-weight: 600; font-size: 0.9rem; display: block; margin-top: 10px; }
+  select, input, textarea { width: 100%; padding: 8px; margin: 4px 0 10px; border: 1px solid #ccc; border-radius: 8px; }
+  .btn { background: #1a73e8; color: white; padding: 12px; border: none; border-radius: 8px; width: 100%; font-size: 1rem; margin-top: 12px; }
+  .section { font-weight: 700; color: #1a73e8; margin-top: 18px; border-bottom: 1px solid #ddd; }
+</style>
+</head>
+<body>
+<div class="container">
+<h1>📋 Laporan Harian Validasi POP</h1>
+<form id="form">
+<div class="section">🏷️ IDENTITAS</div>
+<label>Nama POP *</label><select id="nama_pop" required><option value="">-- Pilih --</option><option>POP WNA</option><option>POP Leces</option><option>POP Patalan</option></select>
+<label>Nama Petugas *</label><input type="text" id="nama_petugas" required>
+<label>Tanggal *</label><input type="date" id="tanggal" required>
+<label>Jam Mulai *</label><input type="time" id="jam_mulai" required>
+<label>Jam Selesai *</label><input type="time" id="jam_selesai" required>
+<label>Status Pekerjaan *</label><select id="status_pekerjaan" required><option value="">-- Pilih --</option><option>Selesai</option><option>Pending</option><option>Partial</option><option>Cancelled</option></select>
+<label>ID Pekerjaan / Ticket</label><input type="text" id="id_ticket" placeholder="Opsional">
+<div class="section">⚙️ PERANGKAT</div>
+<label>Perangkat Aktif</label><div id="perangkat_aktif"><input type="checkbox" value="OLT"> OLT <input type="checkbox" value="Switch"> Switch</div>
+<label>Perangkat Pasif</label><div id="perangkat_pasif"><input type="checkbox" value="OTB"> OTB <input type="checkbox" value="Roset"> Roset</div>
+<div class="section">🧩 PEKERJAAN</div>
+<label>Pekerjaan yang Sudah Dilakukan *</label>
+<div id="pekerjaan">
+<input type="checkbox" value="Inventarisir Perangkat"> Inventarisir Perangkat<br>
+<input type="checkbox" value="Telusuri & Rapikan Patch Core"> Telusuri & Rapikan Patch Core<br>
+<input type="checkbox" value="Telusuri & Catat Arah Feeder"> Telusuri & Catat Arah Feeder<br>
+<input type="checkbox" value="Pasang Label Patch Core"> Pasang Label Patch Core<br>
+<input type="checkbox" value="Pasang Label Feeder"> Pasang Label Feeder<br>
+<input type="checkbox" value="Validasi OTB"> Validasi OTB<br>
+<input type="checkbox" value="OTDR tiap port OTB"> OTDR tiap port OTB<br>
+<input type="checkbox" value="Dokumentasi"> Dokumentasi<br>
+</div>
+<div class="section">📊 HASIL</div>
+<label>Jumlah patch core yang sudah dilabel</label><input type="text" id="jumlah_patch_core" placeholder="8">
+<label>Jumlah Port OTB yang sudah di OTDR</label><input type="text" id="jumlah_port_otdr" placeholder="10">
+<div class="section">📍 KONDISI LAPANGAN</div>
+<label>Lokasi detail dalam POP *</label><input type="text" id="lokasi_detail" required placeholder="Rack 1, OTB kiri">
+<label>Kondisi SEBELUM *</label><textarea id="kondisi_sebelum" required></textarea>
+<label>Kondisi SESUDAH *</label><textarea id="kondisi_sesudah" required></textarea>
+<div class="section">⚠️ KENDALA</div>
+<label>Kendala / Catatan</label><textarea id="kendala"></textarea>
+<div class="section">📸 DOKUMENTASI</div>
+<label>Upload Foto SEBELUM *</label><input type="file" id="foto_sebelum" multiple accept="image/*" required>
+<label>Upload Foto SESUDAH *</label><input type="file" id="foto_sesudah" multiple accept="image/*" required>
+<label>Foto detail OTB / patch core</label><input type="file" id="foto_detail" multiple accept="image/*">
+<div class="section">✔️ VALIDASI</div>
+<label><input type="checkbox" id="validasi_data" required> Data sesuai kondisi lapangan *</label>
+<label>Tanda tangan / inisial petugas *</label><input type="text" id="inisial" required placeholder="BUD">
+<button type="submit" class="btn">Kirim Laporan</button>
+</form>
+<div id="status"></div>
+</div>
+<script>
+const URL_BACKEND = "https://script.google.com/macros/s/AKfycbzxpp3xdW-LGNPQQCnC9o-274-R7pTIaiyfTsRIpsSIQvsuwf0-VPEofy9KNID5ebJJZg/exec"
+document.getElementById('form').addEventListener('submit', async (e) => {
+  e.preventDefault();
+  const st = document.getElementById('status');
+  st.textContent = "Mengirim...";
+  const pekerjaan = [...document.querySelectorAll('#pekerjaan input:checked')].map(el => el.value);
+  if (pekerjaan.length === 0) { st.textContent = "❌ Centang minimal satu pekerjaan!"; return; }
+  const toBase64 = files => Promise.all(Array.from(files).map(f => new Promise((res, rej) => {
+    const r = new FileReader(); r.onload = () => res(r.result); r.onerror = rej; r.readAsDataURL(f);
+  })));
+  try {
+    const data = {
+      nama_pop: document.getElementById('nama_pop').value,
+      nama_petugas: document.getElementById('nama_petugas').value,
+      tanggal: document.getElementById('tanggal').value,
+      jam_mulai: document.getElementById('jam_mulai').value,
+      jam_selesai: document.getElementById('jam_selesai').value,
+      status_pekerjaan: document.getElementById('status_pekerjaan').value,
+      id_ticket: document.getElementById('id_ticket').value,
+      perangkat_aktif: [...document.querySelectorAll('#perangkat_aktif input:checked')].map(e => e.value),
+      perangkat_pasif: [...document.querySelectorAll('#perangkat_pasif input:checked')].map(e => e.value),
+      pekerjaan: pekerjaan,
+      jumlah_patch_core_dilabel: document.getElementById('jumlah_patch_core').value,
+      jumlah_port_otb_otdr: document.getElementById('jumlah_port_otdr').value,
+      lokasi_detail: document.getElementById('lokasi_detail').value,
+      kondisi_sebelum: document.getElementById('kondisi_sebelum').value,
+      kondisi_sesudah: document.getElementById('kondisi_sesudah').value,
+      kendala: document.getElementById('kendala').value,
+      foto_sebelum: await toBase64(document.getElementById('foto_sebelum').files),
+      foto_sesudah: await toBase64(document.getElementById('foto_sesudah').files),
+      foto_detail: await toBase64(document.getElementById('foto_detail').files),
+      inisial: document.getElementById('inisial').value
+    };
+    const res = await fetch(URL_BACKEND, { method: 'POST', body: JSON.stringify(data), headers: {'Content-Type': 'application/json'} });
+    const json = await res.json();
+    st.textContent = json.status === "success" ? "✅ Laporan tersimpan!" : "❌ " + json.message;
+    if (json.status === "success") document.getElementById('form').reset();
+  } catch (err) {
+    st.textContent = "❌ Error: " + err.message;
+  }
+});
+</script>
+</body>
+</html>
